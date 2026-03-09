@@ -24,13 +24,38 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       setIsDbLoading(true);
-      const savedUser = localStorage.getItem('portfoliox_user');
-      if (savedUser) {
-        const user: AuthUser = JSON.parse(savedUser);
-        setCurrentUser(user);
-        // Route to correct dashboard on restore
-        if (user.role === 'recruiter') setCurrentView(AppView.RECRUITER);
+
+      const savedUserStr = localStorage.getItem('portfoliox_user');
+      if (savedUserStr) {
+        try {
+          const stored: AuthUser = JSON.parse(savedUserStr);
+
+          try {
+            // Validate session against the server
+            const validated = await db.validateSession(stored.id);
+
+            if (validated) {
+              // Session is real and user exists in DB ✅
+              localStorage.setItem('portfoliox_user', JSON.stringify(validated));
+              setCurrentUser(validated);
+              if (validated.role === 'recruiter') setCurrentView(AppView.RECRUITER);
+              else setCurrentView(AppView.JOB_SEEKER);
+            } else {
+              // Server responded but user NOT found
+              localStorage.removeItem('portfoliox_user');
+            }
+          } catch {
+            // validateSession threw with isNetworkError — server is offline.
+            // Trust the local session so offline / local dev still works.
+            setCurrentUser(stored);
+            if (stored.role === 'recruiter') setCurrentView(AppView.RECRUITER);
+            else setCurrentView(AppView.JOB_SEEKER);
+          }
+        } catch {
+          localStorage.removeItem('portfoliox_user');
+        }
       }
+
       const data = await db.getPortfolios();
       setAllPortfolios(data);
       setIsDbLoading(false);

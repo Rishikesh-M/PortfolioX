@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { AuthUser, UserRole } from '../types.ts';
+import { db } from '../services/db.ts';
 
 interface LoginPageProps {
     onAuthSuccess: (user: AuthUser) => void;
@@ -13,6 +14,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
     const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
     const [isLogin, setIsLogin] = useState(true);
     const [loading, setLoading] = useState(false);
+    const [apiError, setApiError] = useState<string | null>(null);
 
     // Form fields
     const [email, setEmail] = useState('');
@@ -36,25 +38,43 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
         setFullName('');
         setCompany('');
         setWebsite('');
+        setApiError(null);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedRole) return;
         setLoading(true);
+        setApiError(null);
 
-        setTimeout(() => {
-            const mockUser: AuthUser = {
-                id: Math.random().toString(36).substr(2, 9),
-                fullName: isLogin ? (email.split('@')[0] || 'User') : fullName,
-                email,
-                role: selectedRole,
-                ...(selectedRole === 'recruiter' && { company, website }),
-            };
-            localStorage.setItem('portfoliox_user', JSON.stringify(mockUser));
-            onAuthSuccess(mockUser);
+        try {
+            let authUser: AuthUser;
+            if (isLogin) {
+                authUser = await db.login({ email, password, role: selectedRole });
+            } else {
+                authUser = await db.register({
+                    fullName,
+                    email,
+                    password,
+                    role: selectedRole,
+                    ...(selectedRole === 'recruiter' && { company, website }),
+                });
+            }
+            localStorage.setItem('portfoliox_user', JSON.stringify(authUser));
+            onAuthSuccess(authUser);
+        } catch (err: unknown) {
+            let msg: string;
+            if (err && typeof err === 'object' && (err as { isNetworkError?: boolean }).isNetworkError) {
+                msg = '🔌 Cannot reach the server. Start the API server locally (cd server && npm run dev), or ensure your Vercel deployment is live.';
+            } else if (err instanceof Error) {
+                msg = err.message;
+            } else {
+                msg = 'Authentication failed. Please try again.';
+            }
+            setApiError(msg);
+        } finally {
             setLoading(false);
-        }, 1200);
+        }
     };
 
     const isRecruiter = selectedRole === 'recruiter';
@@ -340,6 +360,20 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
                                     </div>
                                 </div>
 
+                                {apiError && (
+                                    <div style={{
+                                        background: 'rgba(239,68,68,0.1)',
+                                        border: '1px solid rgba(239,68,68,0.3)',
+                                        borderRadius: '12px',
+                                        padding: '12px 16px',
+                                        color: '#fca5a5',
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                    }}>
+                                        ⚠️ {apiError}
+                                    </div>
+                                )}
+
                                 <button
                                     id="auth-submit-btn"
                                     type="submit"
@@ -368,7 +402,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
                             <div className="text-center pt-2 border-t border-white/5">
                                 <button
                                     id="auth-toggle-btn"
-                                    onClick={() => setIsLogin(l => !l)}
+                                    onClick={() => { setIsLogin(l => !l); setApiError(null); }}
                                     className="text-sm font-medium transition-colors"
                                     style={{ color: isRecruiter ? '#60a5fa' : '#c084fc' }}
                                 >
