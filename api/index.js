@@ -3,7 +3,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { connectDB } from './config/db.js';
 import authRoutes from './routes/auth.js';
 import portfolioRoutes from './routes/portfolios.js';
 
@@ -41,15 +40,11 @@ app.use((err, req, res, _next) => {
     res.status(500).json({ error: err.message || 'Internal Server Error' });
 });
 
-// ─── Connect DB & Start ───────────────────────────────────────────────────────
-connectDB().then(() => {
-    app.listen(PORT, () => {
-        console.log(`\n🚀 PortfolioX API running at http://localhost:${PORT}`);
-        console.log(`   Health: http://localhost:${PORT}/api/health`);
-        console.log(`   Auth:   http://localhost:${PORT}/api/auth`);
-        console.log(`   Ports:  http://localhost:${PORT}/api/portfolios\n`);
-    });
-}).catch(err => {
-    console.error('❌ Failed to connect to MongoDB:', err.message);
-    process.exit(1);
+// ─── Start ───────────────────────────────────────────────────────
+app.listen(PORT, () => {
+    console.log(`\n🚀 PortfolioX API running at http://localhost:${PORT}`);
+    console.log(`   Health: http://localhost:${PORT}/api/health`);
+    console.log(`   Auth:   http://localhost:${PORT}/api/auth`);
+    console.log(`   Ports:  http://localhost:${PORT}/api/portfolios\n`);
+    console.log(`📂 Using JSON Database: ${path.resolve(__dirname, '..', 'db.json')}`);
 });

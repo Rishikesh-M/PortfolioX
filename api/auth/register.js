@@ -1,4 +1,3 @@
-import { connectDB } from '../_lib/db.js';
 import User from '../_lib/User.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -8,7 +7,6 @@ export default async function handler(req, res) {
     }
 
     try {
-        await connectDB();
         const { fullName, email, password, role, company, website } = req.body;
 
         if (!fullName || !email || !password || !role) {

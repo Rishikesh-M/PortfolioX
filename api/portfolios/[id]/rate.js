@@ -1,4 +1,3 @@
-import { connectDB } from '../../_lib/db.js';
 import Portfolio from '../../_lib/Portfolio.js';
 
 export default async function handler(req, res) {
@@ -7,7 +6,6 @@ export default async function handler(req, res) {
     }
 
     try {
-        await connectDB();
         const { id } = req.query;
         const { userId, value } = req.body;
 

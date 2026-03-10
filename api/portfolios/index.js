@@ -1,4 +1,3 @@
-import { connectDB } from '../_lib/db.js';
 import Portfolio from '../_lib/Portfolio.js';
 import pkg from '../../constants.ts'; // We'll just read MOCK_PORTFOLIOS directly if needed
 import fs from 'fs';
@@ -6,7 +5,6 @@ import path from 'path';
 
 export default async function handler(req, res) {
     try {
-        await connectDB();
 
         if (req.method === 'GET') {
             const portfolios = await Portfolio.find().sort({ createdAt: -1 });

@@ -1,4 +1,3 @@
-import { connectDB } from '../../_lib/db.js';
 import User from '../../_lib/User.js';
 
 export default async function handler(req, res) {
@@ -7,7 +6,6 @@ export default async function handler(req, res) {
     }
 
     try {
-        await connectDB();
         const { id } = req.query;
 
         const user = await User.findOne({ id });
