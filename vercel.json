@@ -5,14 +5,8 @@
     "framework": "vite",
     "rewrites": [
         {
-            "source": "/((?!api/).*)",
+            "source": "/(.*)",
             "destination": "/index.html"
         }
-    ],
-    "functions": {
-        "api/**/*.js": {
-            "memory": 512,
-            "maxDuration": 15
-        }
-    }
+    ]
 }
