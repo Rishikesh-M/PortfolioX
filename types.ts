@@ -68,6 +68,7 @@ export interface UserPortfolio {
 }
 
 export enum AppView {
+  LANDING = 'landing',
   GENERATOR = 'generator',
   PORTFOLIO = 'portfolio',
   DISCOVER = 'discover',

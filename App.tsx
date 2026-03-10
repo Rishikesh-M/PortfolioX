@@ -7,13 +7,14 @@ import DiscoveryGallery from './components/DiscoveryGallery.tsx';
 import LoginPage from './components/LoginPage.tsx';
 import PortfolioEditor from './components/PortfolioEditor.tsx';
 import QuizPage from './components/QuizPage.tsx';
+import LandingPage from './components/LandingPage.tsx';
 import RecruiterDashboard from './components/RecruiterDashboard.tsx';
 import { AppView, UserPortfolio, AuthUser } from './types.ts';
 import { generatePortfolioFromLinks } from './geminiService.ts';
 import { db } from './services/db.ts';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<AppView>(AppView.DISCOVER);
+  const [currentView, setCurrentView] = useState<AppView>(AppView.LANDING);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [currentPortfolio, setCurrentPortfolio] = useState<UserPortfolio | null>(null);
   const [lastLinks, setLastLinks] = useState<{ github: string; linkedin: string; otherLink: string; context?: string } | undefined>(undefined);
@@ -29,35 +30,26 @@ const App: React.FC = () => {
       if (savedUserStr) {
         try {
           const stored: AuthUser = JSON.parse(savedUserStr);
+          setCurrentUser(stored);
+          const portfolios = await db.getPortfolios();
+          setAllPortfolios(portfolios);
 
-          try {
-            // Validate session against the server
-            const validated = await db.validateSession(stored.id);
+          const myPortfolio = portfolios.find(p => p.userId === stored.id);
+          if (myPortfolio) setCurrentPortfolio(myPortfolio);
 
-            if (validated) {
-              // Session is real and user exists in DB ✅
-              localStorage.setItem('portfoliox_user', JSON.stringify(validated));
-              setCurrentUser(validated);
-              if (validated.role === 'recruiter') setCurrentView(AppView.RECRUITER);
-              else setCurrentView(AppView.JOB_SEEKER);
-            } else {
-              // Server responded but user NOT found
-              localStorage.removeItem('portfoliox_user');
-            }
-          } catch {
-            // validateSession threw with isNetworkError — server is offline.
-            // Trust the local session so offline / local dev still works.
-            setCurrentUser(stored);
-            if (stored.role === 'recruiter') setCurrentView(AppView.RECRUITER);
-            else setCurrentView(AppView.JOB_SEEKER);
-          }
+          // Route to role-specific dashboard
+          if (stored.role === 'recruiter') setCurrentView(AppView.RECRUITER);
+          else if (myPortfolio) setCurrentView(AppView.PORTFOLIO);
+          else setCurrentView(AppView.GENERATOR);
         } catch {
           localStorage.removeItem('portfoliox_user');
+          setCurrentView(AppView.LANDING);
         }
+      } else {
+        const portfolios = await db.getPortfolios();
+        setAllPortfolios(portfolios);
+        setCurrentView(AppView.LANDING);
       }
-
-      const data = await db.getPortfolios();
-      setAllPortfolios(data);
       setIsDbLoading(false);
     };
     loadData();
@@ -152,14 +144,21 @@ const App: React.FC = () => {
     if (user.role === 'recruiter') {
       setCurrentView(AppView.RECRUITER);
     } else {
-      setCurrentView(AppView.DISCOVER);
+      const myPortfolio = allPortfolios.find(p => p.userId === user.id);
+      if (myPortfolio) {
+        setCurrentPortfolio(myPortfolio);
+        setCurrentView(AppView.PORTFOLIO);
+      } else {
+        setCurrentView(AppView.GENERATOR);
+      }
     }
   };
 
   const handleLogout = () => {
     localStorage.removeItem('portfoliox_user');
     setCurrentUser(null);
-    setCurrentView(AppView.DISCOVER);
+    setCurrentPortfolio(null);
+    setCurrentView(AppView.LANDING);
   };
 
   const handleQuizUpdate = async (points: number, level: number) => {
@@ -188,6 +187,9 @@ const App: React.FC = () => {
     });
   };
 
+  const navigateToAuth = () => setCurrentView(AppView.AUTH);
+  const navigateToDiscover = () => setCurrentView(AppView.DISCOVER);
+
   return (
     <div className="min-h-screen selection:bg-purple-500/30">
       <Header
@@ -207,6 +209,12 @@ const App: React.FC = () => {
           </div>
         ) : (
           <div className="transition-all duration-500">
+            {currentView === AppView.LANDING && (
+              <LandingPage
+                onGetStarted={currentUser ? () => setCurrentView(AppView.GENERATOR) : navigateToAuth}
+                onExplore={currentUser?.role === 'recruiter' ? navigateToDiscover : navigateToAuth}
+              />
+            )}
             {currentView === AppView.AUTH && <LoginPage onAuthSuccess={handleAuthSuccess} />}
             {currentView === AppView.GENERATOR && <GeneratorForm onGenerate={handleGenerate} isLoading={isLoading} initialLinks={lastLinks} />}
             {currentView === AppView.PORTFOLIO && currentPortfolio && <PortfolioView portfolio={currentPortfolio} onEdit={handleEdit} currentUser={currentUser} />}
@@ -221,10 +229,13 @@ const App: React.FC = () => {
               <QuizPage
                 currentUserPortfolio={currentPortfolio}
                 onUpdateStats={handleQuizUpdate}
-                onBack={() => setCurrentView(AppView.DISCOVER)}
+                onBack={() => {
+                  if (currentUser?.role === 'recruiter') setCurrentView(AppView.RECRUITER);
+                  else setCurrentView(AppView.PORTFOLIO);
+                }}
               />
             )}
-            {currentView === AppView.DISCOVER && (
+            {currentView === AppView.DISCOVER && currentUser?.role === 'recruiter' && (
               <DiscoveryGallery
                 portfolios={allPortfolios}
                 onViewPortfolio={handleViewPortfolio}
@@ -232,7 +243,7 @@ const App: React.FC = () => {
                 currentUser={currentUser}
               />
             )}
-            {currentView === AppView.RECRUITER && currentUser && (
+            {currentView === AppView.RECRUITER && currentUser?.role === 'recruiter' && (
               <RecruiterDashboard
                 portfolios={allPortfolios}
                 currentUser={currentUser}
