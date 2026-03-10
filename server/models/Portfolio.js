@@ -1,89 +1,137 @@
-import mongoose from 'mongoose';
+import { readDb, writeDb } from '../config/jsonDb.js';
 
-const RatingSchema = new mongoose.Schema({
-    userId: { type: String, required: true },
-    value: { type: Number, required: true, min: 1, max: 5 },
-}, { _id: false });
+const Portfolio = {
+    async countDocuments() {
+        const db = await readDb();
+        return db.portfolios.length;
+    },
 
-const ProjectSchema = new mongoose.Schema({
-    id: { type: String, required: true },
-    name: { type: String, required: true },
-    description: { type: String, default: '' },
-    type: { type: String, default: '' },
-    url: { type: String, default: '' },
-}, { _id: false });
+    async insertMany(items) {
+        const db = await readDb();
+        const enrichedItems = items.map(item => ({
+            ...item,
+            createdAt: item.createdAt || new Date().toISOString(),
+            updatedAt: item.updatedAt || new Date().toISOString()
+        }));
+        db.portfolios.push(...enrichedItems);
+        await writeDb(db);
+        return enrichedItems;
+    },
 
-const SkillSchema = new mongoose.Schema({
-    name: String,
-    category: String,
-}, { _id: false });
+    async find() {
+        const db = await readDb();
+        let results = [...db.portfolios];
 
-const LearningProgressSchema = new mongoose.Schema({
-    label: { type: String, required: true },
-    percentage: { type: Number, required: true, min: 0, max: 100 },
-}, { _id: false });
+        return {
+            sort: function (criteria) {
+                const key = Object.keys(criteria)[0];
+                const direction = criteria[key];
+                results.sort((a, b) => {
+                    if (a[key] < b[key]) return direction;
+                    if (a[key] > b[key]) return -direction;
+                    return 0;
+                });
+                return this;
+            },
+            lean: function () { return this; },
+            then: (resolve) => resolve(results)
+        };
+    },
 
-const PortfolioStatsSchema = new mongoose.Schema({
-    repos: { type: Number, default: 0 },
-    followers: { type: Number, default: 0 },
-    projectsCount: { type: Number, default: 0 },
-}, { _id: false });
+    async findOne(query) {
+        const db = await readDb();
+        const { id, userId } = query;
+        const p = id ? db.portfolios.find(item => item.id === id) : db.portfolios.find(item => item.userId === userId);
 
-const ContactSchema = new mongoose.Schema({
-    email: { type: String, default: '' },
-    twitter: { type: String, default: '' },
-    linkedin: { type: String, default: '' },
-    website: { type: String, default: '' },
-}, { _id: false });
+        const result = p ? this.enrich(p) : null;
 
-const QuizStatsSchema = new mongoose.Schema({
-    level: { type: Number, default: 1 },
-    points: { type: Number, default: 0 },
-    maxLevel: { type: Number, default: 15 },
-}, { _id: false });
+        return {
+            ...result,
+            lean: function () { return result; },
+            then: (resolve) => resolve(result)
+        };
+    },
 
-const PortfolioSchema = new mongoose.Schema({
-    // `id` is the string ID used in the frontend (e.g. from Gemini or manual)
-    id: { type: String, required: true, unique: true, index: true },
-    // userId links to the AuthUser who owns this portfolio
-    userId: { type: String, index: true },
-    fullName: { type: String, required: true, trim: true },
-    role: { type: String, default: '' },
-    bio: { type: String, default: '' },
-    avatar: { type: String, default: '' },
-    domain: { type: String, default: 'Full Stack' },
-    stats: { type: PortfolioStatsSchema, default: () => ({}) },
-    skills: { type: [String], default: [] },
-    projects: { type: [ProjectSchema], default: [] },
-    githubProjects: { type: [ProjectSchema], default: [] },
-    learningProgress: { type: [LearningProgressSchema], default: [] },
-    createdAt: { type: String, default: () => new Date().toISOString() },
-    score: { type: Number, default: 0, min: 0, max: 100 },
-    grade: { type: String, enum: ['S', 'A', 'B', 'C', 'D'], default: 'C' },
-    internalFollowers: { type: [String], default: [] },
-    ratings: { type: [RatingSchema], default: [] },
-    contact: { type: ContactSchema, default: () => ({}) },
-    quizStats: { type: QuizStatsSchema, default: null },
-}, {
-    timestamps: true, // adds createdAt/updatedAt mongo fields
-    versionKey: false,
-});
+    async findOneAndUpdate(query, update, options = {}) {
+        const db = await readDb();
+        const id = query.id || query.userId;
+        const index = db.portfolios.findIndex(p => p.id === id || p.userId === id);
 
-// Virtual average rating
-PortfolioSchema.virtual('averageRating').get(function () {
-    if (!this.ratings || this.ratings.length === 0) return 0;
-    const sum = this.ratings.reduce((acc, r) => acc + r.value, 0);
-    return +(sum / this.ratings.length).toFixed(2);
-});
+        let portfolio = index !== -1 ? db.portfolios[index] : null;
 
-// toJSON: include virtuals, map _id → mongoId (keep our custom `id`)
-PortfolioSchema.set('toJSON', {
-    virtuals: true,
-    transform: (_, ret) => {
-        ret.mongoId = ret._id;
-        delete ret._id;
-        return ret;
+        if (portfolio) {
+            if (update.$set) Object.assign(portfolio, update.$set);
+            if (update.$pull) {
+                for (const key in update.$pull) {
+                    const filter = update.$pull[key];
+                    portfolio[key] = portfolio[key].filter(item => {
+                        for (const fKey in filter) {
+                            if (item[fKey] !== filter[fKey]) return true;
+                        }
+                        return false;
+                    });
+                }
+            }
+            if (update.$push) {
+                for (const key in update.$push) {
+                    portfolio[key].push(update.$push[key]);
+                }
+            }
+            if (!update.$set && !update.$pull && !update.$push) Object.assign(portfolio, update);
+
+            portfolio.updatedAt = new Date().toISOString();
+            await writeDb(db);
+            return this.enrich(portfolio);
+        } else if (options.upsert) {
+            const data = update.$set || update;
+            const newItem = {
+                ...data,
+                id: query.id || data.id,
+                userId: query.userId || data.userId,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            db.portfolios.push(newItem);
+            await writeDb(db);
+            return this.enrich(newItem);
+        }
+        return null;
+    },
+
+    async findOneAndDelete({ id }) {
+        const db = await readDb();
+        const index = db.portfolios.findIndex(p => p.id === id);
+        if (index !== -1) {
+            const deleted = db.portfolios.splice(index, 1)[0];
+            await writeDb(db);
+            return deleted;
+        }
+        return null;
+    },
+
+    enrich(p) {
+        if (!p) return null;
+        return {
+            ...p,
+            save: async function () {
+                const db = await readDb();
+                const idx = db.portfolios.findIndex(item => item.id === this.id);
+                if (idx !== -1) {
+                    db.portfolios[idx] = { ...this, updatedAt: new Date().toISOString() };
+                    // Remove the save function itself before saving to JSON
+                    delete db.portfolios[idx].save;
+                    delete db.portfolios[idx].toJSON;
+                    await writeDb(db);
+                }
+            },
+            toJSON: function () {
+                const ret = { ...this };
+                delete ret.save;
+                delete ret.toJSON;
+                return ret;
+            }
+        };
     }
-});
+};
 
-export default mongoose.model('Portfolio', PortfolioSchema);
+export default Portfolio;

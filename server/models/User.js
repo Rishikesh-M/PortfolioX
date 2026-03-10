@@ -1,47 +1,53 @@
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { readDb, writeDb } from '../config/jsonDb.js';
 
-const UserSchema = new mongoose.Schema({
-    id: { type: String, required: true, unique: true, index: true },
-    fullName: { type: String, required: true, trim: true },
-    email: {
-        type: String,
-        required: true,
-        unique: true,
-        lowercase: true,
-        trim: true,
-        match: [/^\S+@\S+\.\S+$/, 'Invalid email address'],
+const User = {
+    async findOne({ email, id }) {
+        const db = await readDb();
+        if (email) {
+            const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+            if (user) return this.enrichUser(user);
+        }
+        if (id) {
+            const user = db.users.find(u => u.id === id);
+            if (user) return this.enrichUser(user);
+        }
+        return null;
     },
-    passwordHash: { type: String, required: true },
-    role: { type: String, enum: ['recruiter', 'jobseeker'], required: true },
-    // Recruiter extras
-    company: { type: String, default: '' },
-    website: { type: String, default: '' },
-}, {
-    timestamps: true,
-    versionKey: false,
-});
 
-// Hash password before save
-UserSchema.pre('save', async function (next) {
-    if (!this.isModified('passwordHash')) return next();
-    this.passwordHash = await bcrypt.hash(this.passwordHash, 12);
-    next();
-});
+    async create(userData) {
+        const db = await readDb();
 
-// Instance method: verify password
-UserSchema.methods.verifyPassword = async function (plain) {
-    return bcrypt.compare(plain, this.passwordHash);
+        // Hash password before saving
+        const salt = await bcrypt.genSalt(12);
+        const passwordHash = await bcrypt.hash(userData.passwordHash, salt);
+
+        const newUser = {
+            ...userData,
+            passwordHash,
+            id: userData.id || `user_${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        db.users.push(newUser);
+        await writeDb(db);
+        return this.enrichUser(newUser);
+    },
+
+    enrichUser(user) {
+        return {
+            ...user,
+            verifyPassword: async (candidatePassword) => {
+                return await bcrypt.compare(candidatePassword, user.passwordHash);
+            },
+            toJSON: function () {
+                const ret = { ...this };
+                delete ret.passwordHash;
+                return ret;
+            }
+        };
+    }
 };
 
-// toJSON: strip passwordHash, remap _id
-UserSchema.set('toJSON', {
-    transform: (_, ret) => {
-        ret.mongoId = ret._id;
-        delete ret._id;
-        delete ret.passwordHash;
-        return ret;
-    }
-});
-
-export default mongoose.model('User', UserSchema);
+export default User;

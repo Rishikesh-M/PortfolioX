@@ -1,31 +1,46 @@
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { readDb, writeDb } from './jsonDb.js';
 
-const UserSchema = new mongoose.Schema({
-    id: { type: String, required: true, unique: true },
-    fullName: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    passwordHash: { type: String, required: true }, // will store hashed password
-    role: { type: String, enum: ['recruiter', 'jobseeker'], required: true },
-    company: { type: String },
-    website: { type: String },
-});
+const User = {
+    async findOne({ email, id }) {
+        const db = await readDb();
+        if (email) {
+            const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+            if (user) return this.enrichUser(user);
+        }
+        if (id) {
+            const user = db.users.find(u => u.id === id);
+            if (user) return this.enrichUser(user);
+        }
+        return null;
+    },
 
-// Middleware to hash password before saving
-UserSchema.pre('save', async function (next) {
-    if (!this.isModified('passwordHash')) return next();
-    try {
+    async create(userData) {
+        const db = await readDb();
+
+        // Hash password before saving
         const salt = await bcrypt.genSalt(10);
-        this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
-        next();
-    } catch (err) {
-        next(err);
-    }
-});
+        const passwordHash = await bcrypt.hash(userData.passwordHash, salt);
 
-// Method to verify password
-UserSchema.methods.verifyPassword = async function (candidatePassword) {
-    return await bcrypt.compare(candidatePassword, this.passwordHash);
+        const newUser = {
+            ...userData,
+            passwordHash,
+            id: userData.id || `user_${Date.now()}`
+        };
+
+        db.users.push(newUser);
+        await writeDb(db);
+        return this.enrichUser(newUser);
+    },
+
+    enrichUser(user) {
+        return {
+            ...user,
+            verifyPassword: async (candidatePassword) => {
+                return await bcrypt.compare(candidatePassword, user.passwordHash);
+            }
+        };
+    }
 };
 
-export default mongoose.models.User || mongoose.model('User', UserSchema);
+export default User;
