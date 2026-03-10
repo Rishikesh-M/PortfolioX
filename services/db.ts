@@ -1,5 +1,5 @@
 /**
- * db.ts — Frontend API client for PortfolioX MongoDB backend.
+ * db.ts — Frontend API client for PortfolioX JSON backend.
  *
  * Uses relative /api URLs which work in both environments:
  *   • Local dev  → Vite proxy forwards /api → http://localhost:5000
