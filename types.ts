@@ -64,6 +64,7 @@ export interface UserPortfolio {
     points: number;
     maxLevel?: number;
   };
+  updatedAt?: string;
 }
 
 export enum AppView {

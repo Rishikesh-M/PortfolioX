@@ -1,165 +1,113 @@
 /**
- * db.ts — Frontend API client for PortfolioX JSON backend.
+ * db.ts — Pure Frontend Database for PortfolioX.
  *
- * Uses relative /api URLs which work in both environments:
- *   • Local dev  → Vite proxy forwards /api → http://localhost:5000
- *   • Vercel     → /api/* is handled by serverless functions (same domain)
+ * This version uses localStorage for persistence, removing the need for a backend API.
+ * It simulates a database by storing 'users' and 'portfolios' in the browser.
  */
 
 import { UserPortfolio, AuthUser } from '../types.ts';
 import { MOCK_PORTFOLIOS } from '../constants.ts';
+import bcrypt from 'bcryptjs';
 
-const API_BASE = '/api';
+const USERS_KEY = 'portfoliox_users';
+const PORTFOLIOS_KEY = 'portfoliox_portfolios';
 
-class ApiError extends Error {
-  status?: number;
-  isNetworkError?: boolean;
-  constructor(message: string, opts: { status?: number; isNetworkError?: boolean } = {}) {
-    super(message);
-    this.status = opts.status;
-    this.isNetworkError = opts.isNetworkError;
-  }
-}
+// --- Internal Helpers ---
 
-async function apiGet<T>(path: string): Promise<T> {
-  let res: Response;
+function getFromLS<T>(key: string, defaultValue: T): T {
   try {
-    res = await fetch(`${API_BASE}${path}`);
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : defaultValue;
   } catch {
-    throw new ApiError('Cannot reach the server. Please check your connection.', { isNetworkError: true });
-  }
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new ApiError(body.error || `Request failed (${res.status})`, { status: res.status });
-  }
-  return res.json();
-}
-
-async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-  } catch {
-    throw new ApiError('Cannot reach the server. Please check your connection.', { isNetworkError: true });
-  }
-  if (!res.ok) {
-    const errBody = await res.json().catch(() => ({}));
-    throw new ApiError(errBody.error || `Request failed (${res.status})`, { status: res.status });
-  }
-  return res.json();
-}
-
-async function apiDelete<T>(path: string): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE}${path}`, { method: 'DELETE' });
-  } catch {
-    throw new ApiError('Cannot reach the server. Please check your connection.', { isNetworkError: true });
-  }
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new ApiError(body.error || `Request failed (${res.status})`, { status: res.status });
-  }
-  return res.json();
-}
-
-const LS_KEY = 'portfoliox_portfolios';
-
-function lsGetPortfolios(): UserPortfolio[] {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    return raw ? JSON.parse(raw) : MOCK_PORTFOLIOS;
-  } catch {
-    return MOCK_PORTFOLIOS;
+    return defaultValue;
   }
 }
 
-function lsSavePortfolios(arr: UserPortfolio[]): void {
-  localStorage.setItem(LS_KEY, JSON.stringify(arr));
+function saveToLS(key: string, data: any): void {
+  localStorage.setItem(key, JSON.stringify(data));
 }
+
+// Initialize logic: ensure we have mock data if nothing exists
+function initDb() {
+  const portfolios = localStorage.getItem(PORTFOLIOS_KEY);
+  if (!portfolios) {
+    saveToLS(PORTFOLIOS_KEY, MOCK_PORTFOLIOS);
+  }
+
+  const users = localStorage.getItem(USERS_KEY);
+  if (!users) {
+    saveToLS(USERS_KEY, []);
+  }
+}
+
+// Call init once
+initDb();
 
 export const db = {
+  // --- Portfolio Operations ---
+
   async getPortfolios(): Promise<UserPortfolio[]> {
-    try {
-      const data = await apiGet<UserPortfolio[]>('/portfolios');
-      lsSavePortfolios(data);
-      return data;
-    } catch (err) {
-      console.warn('⚠️  API unreachable, using localStorage fallback:', err);
-      return lsGetPortfolios();
-    }
+    // Artificial delay to feel like a real DB
+    await new Promise(r => setTimeout(r, 200));
+    return getFromLS<UserPortfolio[]>(PORTFOLIOS_KEY, MOCK_PORTFOLIOS);
   },
 
   async savePortfolio(portfolio: UserPortfolio): Promise<void> {
-    try {
-      await apiPost('/portfolios', portfolio);
-    } catch (err) {
-      console.warn('⚠️  API save failed, using localStorage fallback:', err);
+    const portfolios = getFromLS<UserPortfolio[]>(PORTFOLIOS_KEY, MOCK_PORTFOLIOS);
+    const idx = portfolios.findIndex(p => p.id === portfolio.id);
+
+    if (idx !== -1) {
+      portfolios[idx] = { ...portfolio, updatedAt: new Date().toISOString() } as UserPortfolio;
+    } else {
+      portfolios.unshift({ ...portfolio, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as UserPortfolio);
     }
-    const cached = lsGetPortfolios();
-    const idx = cached.findIndex(p => p.id === portfolio.id);
-    if (idx !== -1) cached[idx] = portfolio;
-    else cached.unshift(portfolio);
-    lsSavePortfolios(cached);
+
+    saveToLS(PORTFOLIOS_KEY, portfolios);
   },
 
   async deletePortfolio(id: string): Promise<void> {
-    try {
-      await apiDelete(`/portfolios/${id}`);
-    } catch (err) {
-      console.warn('⚠️  API delete failed, using localStorage fallback:', err);
-    }
-    const cached = lsGetPortfolios().filter(p => p.id !== id);
-    lsSavePortfolios(cached);
+    const portfolios = getFromLS<UserPortfolio[]>(PORTFOLIOS_KEY, MOCK_PORTFOLIOS);
+    const filtered = portfolios.filter(p => p.id !== id);
+    saveToLS(PORTFOLIOS_KEY, filtered);
   },
 
   async ratePortfolio(portfolioId: string, userId: string, value: number): Promise<UserPortfolio | null> {
-    try {
-      const updated = await apiPost<UserPortfolio>(`/portfolios/${portfolioId}/rate`, { userId, value });
-      const cached = lsGetPortfolios();
-      const idx = cached.findIndex(p => p.id === portfolioId);
-      if (idx !== -1) { cached[idx] = updated; lsSavePortfolios(cached); }
-      return updated;
-    } catch (err) {
-      const cached = lsGetPortfolios();
-      const portfolio = cached.find(p => p.id === portfolioId);
-      if (portfolio) {
-        if (!portfolio.ratings) portfolio.ratings = [];
-        const ri = portfolio.ratings.findIndex(r => r.userId === userId);
-        if (ri !== -1) portfolio.ratings[ri].value = value;
-        else portfolio.ratings.push({ userId, value });
-        lsSavePortfolios(cached);
-        return portfolio;
+    const portfolios = getFromLS<UserPortfolio[]>(PORTFOLIOS_KEY, MOCK_PORTFOLIOS);
+    const portfolio = portfolios.find(p => p.id === portfolioId);
+
+    if (portfolio) {
+      if (!portfolio.ratings) portfolio.ratings = [];
+      const ri = portfolio.ratings.findIndex(r => r.userId === userId);
+      if (ri !== -1) {
+        portfolio.ratings[ri].value = value;
+      } else {
+        portfolio.ratings.push({ userId, value });
       }
-      return null;
+      saveToLS(PORTFOLIOS_KEY, portfolios);
+      return portfolio;
     }
+    return null;
   },
 
   async toggleFollow(portfolioId: string, followerId: string): Promise<UserPortfolio | null> {
-    try {
-      const updated = await apiPost<UserPortfolio>(`/portfolios/${portfolioId}/follow`, { followerId });
-      const cached = lsGetPortfolios();
-      const idx = cached.findIndex(p => p.id === portfolioId);
-      if (idx !== -1) { cached[idx] = updated; lsSavePortfolios(cached); }
-      return updated;
-    } catch (err) {
-      const cached = lsGetPortfolios();
-      const portfolio = cached.find(p => p.id === portfolioId);
-      if (portfolio) {
-        if (!portfolio.internalFollowers) portfolio.internalFollowers = [];
-        const idx2 = portfolio.internalFollowers.indexOf(followerId);
-        if (idx2 === -1) portfolio.internalFollowers.push(followerId);
-        else portfolio.internalFollowers.splice(idx2, 1);
-        lsSavePortfolios(cached);
-        return portfolio;
+    const portfolios = getFromLS<UserPortfolio[]>(PORTFOLIOS_KEY, MOCK_PORTFOLIOS);
+    const portfolio = portfolios.find(p => p.id === portfolioId);
+
+    if (portfolio) {
+      if (!portfolio.internalFollowers) portfolio.internalFollowers = [];
+      const idx = portfolio.internalFollowers.indexOf(followerId);
+      if (idx === -1) {
+        portfolio.internalFollowers.push(followerId);
+      } else {
+        portfolio.internalFollowers.splice(idx, 1);
       }
-      return null;
+      saveToLS(PORTFOLIOS_KEY, portfolios);
+      return portfolio;
     }
+    return null;
   },
+
+  // --- Auth Operations ---
 
   async register(payload: {
     fullName: string;
@@ -169,24 +117,74 @@ export const db = {
     company?: string;
     website?: string;
   }): Promise<AuthUser> {
-    const data = await apiPost<{ user: AuthUser }>('/auth/register', payload);
-    return data.user;
+    const users = getFromLS<any[]>(USERS_KEY, []);
+
+    if (users.find(u => u.email.toLowerCase() === payload.email.toLowerCase())) {
+      throw new Error('An account with this email already exists.');
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(payload.password, salt);
+
+    const newUser = {
+      id: `user_${Date.now()}`,
+      ...payload,
+      passwordHash
+    };
+
+    users.push(newUser);
+    saveToLS(USERS_KEY, users);
+
+    // Return safe AuthUser shape
+    return {
+      id: newUser.id,
+      fullName: newUser.fullName,
+      email: newUser.email,
+      role: newUser.role as any,
+      company: newUser.company,
+      website: newUser.website
+    };
   },
 
   async login(payload: { email: string; password: string; role?: string }): Promise<AuthUser> {
-    const data = await apiPost<{ user: AuthUser }>('/auth/login', payload);
-    return data.user;
+    const users = getFromLS<any[]>(USERS_KEY, []);
+    const user = users.find(u => u.email.toLowerCase() === payload.email.toLowerCase());
+
+    if (!user) {
+      throw new Error('No account found with this email.');
+    }
+
+    if (payload.role && user.role !== payload.role) {
+      throw new Error(`This account is registered as a ${user.role}, not ${payload.role}.`);
+    }
+
+    const isMatch = await bcrypt.compare(payload.password, user.passwordHash);
+    if (!isMatch) {
+      throw new Error('Invalid email or password.');
+    }
+
+    return {
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      company: user.company,
+      website: user.website
+    };
   },
 
   async validateSession(id: string): Promise<AuthUser | null> {
-    try {
-      const data = await apiGet<{ user: AuthUser }>(`/auth/me/${id}`);
-      return data.user;
-    } catch (err) {
-      if (err instanceof ApiError && err.isNetworkError) {
-        throw err;
-      }
-      return null;
-    }
+    const users = getFromLS<any[]>(USERS_KEY, []);
+    const user = users.find(u => u.id === id);
+    if (!user) return null;
+
+    return {
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      company: user.company,
+      website: user.website
+    };
   },
 };
