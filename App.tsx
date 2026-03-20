@@ -9,6 +9,7 @@ import PortfolioEditor from './components/PortfolioEditor.tsx';
 import QuizPage from './components/QuizPage.tsx';
 import LandingPage from './components/LandingPage.tsx';
 import RecruiterDashboard from './components/RecruiterDashboard.tsx';
+import MessagingPanel from './components/MessagingPanel.tsx';
 import { AppView, UserPortfolio, AuthUser } from './types.ts';
 import { generatePortfolioFromLinks } from './geminiService.ts';
 import { db } from './services/db.ts';
@@ -249,6 +250,14 @@ const App: React.FC = () => {
                 currentUser={currentUser}
                 onViewPortfolio={handleViewPortfolio}
               />
+            )}
+            {currentView === AppView.MESSAGES && currentUser && (
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 sm:pt-32 pb-24">
+                <MessagingPanel
+                  currentUser={currentUser}
+                  allPortfolios={allPortfolios}
+                />
+              </div>
             )}
           </div>
         )}

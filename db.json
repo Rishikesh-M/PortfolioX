@@ -1,4 +1,335 @@
 {
-    "users": [],
-    "portfolios": []
+  "users": [
+    {
+      "id": "user_1773963430296",
+      "fullName": "Jason Bourne",
+      "email": "jason.bourne@example.com",
+      "role": "jobseeker",
+      "createdAt": "2026-03-19T23:37:10.717Z"
+    },
+    {
+      "id": "user_1773990942608",
+      "fullName": "Rishikesh M",
+      "email": "rkesh2030@gmail.com",
+      "role": "jobseeker",
+      "createdAt": "2026-03-20T07:15:42.945Z"
+    }
+  ],
+  "portfolios": [
+    {
+      "avatar": "https://avatars.githubusercontent.com/u/74643033?v=4",
+      "bio": "Security Researcher | Ethical Hacking Enthusiast | Lifelong Learner",
+      "domain": "Web Development",
+      "fullName": "Rishikesh More",
+      "githubProjects": [
+        {
+          "description": "An interactive quiz application developed with React, showcasing state management and component-based architecture.",
+          "id": "quiz-app-react",
+          "name": "Quiz App React",
+          "type": "Frontend"
+        },
+        {
+          "description": "A robust To-Do list application built with React, featuring CRUD operations and local storage persistence.",
+          "id": "todo-app-react",
+          "name": "Todo App React",
+          "type": "Frontend"
+        },
+        {
+          "description": "A comprehensive e-commerce platform developed using the MERN stack (MongoDB, Express.js, React, Node.js) with features like product listings, user authentication, and shopping cart functionality.",
+          "id": "mern-ecommerce",
+          "name": "MERN E-commerce",
+          "type": "Fullstack"
+        },
+        {
+          "description": "A personal portfolio website crafted with Next.js, demonstrating server-side rendering, routing, and modern web development practices.",
+          "id": "nextjs-portfolio",
+          "name": "Next.js Portfolio",
+          "type": "Frontend"
+        },
+        {
+          "description": "A full-stack social media application, providing features for user profiles, posts, and interactions.",
+          "id": "social-media-app",
+          "name": "Social Media App",
+          "type": "Fullstack"
+        },
+        {
+          "description": "A simple weather application leveraging JavaScript and a public API to display real-time weather data.",
+          "id": "weather-app-js",
+          "name": "Weather App JS",
+          "type": "Frontend"
+        },
+        {
+          "description": "A real-time chat application built with the MERN stack and Socket.io for instant messaging.",
+          "id": "chat-app-mern",
+          "name": "Chat App MERN",
+          "type": "Fullstack"
+        }
+      ],
+      "grade": "B",
+      "id": "s5pw4pr76",
+      "learningProgress": [
+        {
+          "label": "JavaScript",
+          "percentage": 90
+        },
+        {
+          "label": "React",
+          "percentage": 85
+        },
+        {
+          "label": "Node.js/Express.js",
+          "percentage": 80
+        },
+        {
+          "label": "MongoDB",
+          "percentage": 75
+        },
+        {
+          "label": "Next.js",
+          "percentage": 65
+        },
+        {
+          "label": "Data Structures & Algorithms",
+          "percentage": 60
+        }
+      ],
+      "projects": [
+        {
+          "description": "An interactive quiz application developed with React, showcasing state management and component-based architecture.",
+          "id": "quiz-app-react",
+          "name": "Quiz App React",
+          "type": "Frontend"
+        },
+        {
+          "description": "A robust To-Do list application built with React, featuring CRUD operations and local storage persistence.",
+          "id": "todo-app-react",
+          "name": "Todo App React",
+          "type": "Frontend"
+        },
+        {
+          "description": "A comprehensive e-commerce platform developed using the MERN stack (MongoDB, Express.js, React, Node.js) with features like product listings, user authentication, and shopping cart functionality.",
+          "id": "mern-ecommerce",
+          "name": "MERN E-commerce",
+          "type": "Fullstack"
+        },
+        {
+          "description": "A personal portfolio website crafted with Next.js, demonstrating server-side rendering, routing, and modern web development practices.",
+          "id": "nextjs-portfolio",
+          "name": "Next.js Portfolio",
+          "type": "Frontend"
+        },
+        {
+          "description": "A full-stack social media application, providing features for user profiles, posts, and interactions.",
+          "id": "social-media-app",
+          "name": "Social Media App",
+          "type": "Fullstack"
+        },
+        {
+          "description": "A simple weather application leveraging JavaScript and a public API to display real-time weather data.",
+          "id": "weather-app-js",
+          "name": "Weather App JS",
+          "type": "Frontend"
+        },
+        {
+          "description": "A real-time chat application built with the MERN stack and Socket.io for instant messaging.",
+          "id": "chat-app-mern",
+          "name": "Chat App MERN",
+          "type": "Fullstack"
+        }
+      ],
+      "role": "Cybersecuirty Researcher",
+      "score": 78,
+      "skills": [
+        "JavaScript",
+        "React",
+        "Node.js",
+        "Express.js",
+        "MongoDB",
+        "Next.js",
+        "HTML",
+        "CSS",
+        "Git",
+        "RESTful APIs",
+        "Web Development",
+        "Full Stack Development",
+        "UI/UX Design",
+        "Redux",
+        "API Integration",
+        "Database Management",
+        "Socket.io"
+      ],
+      "stats": {
+        "followers": 0,
+        "projectsCount": 18,
+        "repos": 18
+      },
+      "createdAt": "2026-03-20T07:17:36.166Z",
+      "userId": "user_1773990942608",
+      "updatedAt": "2026-03-20T07:41:25.305Z"
+    }
+  ],
+  "gstin_registry": [
+    {
+      "gstin": "27AAACR5055K1ZK",
+      "legalName": "Reliance Industries Limited",
+      "tradeName": "Reliance Industries",
+      "state": "Maharashtra",
+      "status": "Active",
+      "registrationDate": "2017-07-01",
+      "businessType": "Public Limited Company"
+    },
+    {
+      "gstin": "29AABCT1332L1ZQ",
+      "legalName": "Tata Consultancy Services Limited",
+      "tradeName": "TCS",
+      "state": "Karnataka",
+      "status": "Active",
+      "registrationDate": "2017-07-01",
+      "businessType": "Public Limited Company"
+    },
+    {
+      "gstin": "07AADCF4797A1ZN",
+      "legalName": "Infosys BPM Limited",
+      "tradeName": "Infosys BPM",
+      "state": "Delhi",
+      "status": "Active",
+      "registrationDate": "2017-07-01",
+      "businessType": "Public Limited Company"
+    },
+    {
+      "gstin": "29AABCW0340E1ZN",
+      "legalName": "Wipro Limited",
+      "tradeName": "Wipro",
+      "state": "Karnataka",
+      "status": "Active",
+      "registrationDate": "2017-07-01",
+      "businessType": "Public Limited Company"
+    },
+    {
+      "gstin": "29AAACH8400F1ZP",
+      "legalName": "HCL Technologies Limited",
+      "tradeName": "HCL Technologies",
+      "state": "Karnataka",
+      "status": "Active",
+      "registrationDate": "2017-07-01",
+      "businessType": "Public Limited Company"
+    },
+    {
+      "gstin": "36AABCM1589M1ZN",
+      "legalName": "Tech Mahindra Limited",
+      "tradeName": "Tech Mahindra",
+      "state": "Telangana",
+      "status": "Active",
+      "registrationDate": "2017-07-01",
+      "businessType": "Public Limited Company"
+    },
+    {
+      "gstin": "27AABCM9785P1ZZ",
+      "legalName": "Mahindra & Mahindra Limited",
+      "tradeName": "M&M",
+      "state": "Maharashtra",
+      "status": "Active",
+      "registrationDate": "2017-07-01",
+      "businessType": "Public Limited Company"
+    },
+    {
+      "gstin": "27AAICS5588G1ZV",
+      "legalName": "Capgemini Technology Services India Limited",
+      "tradeName": "Capgemini India",
+      "state": "Maharashtra",
+      "status": "Active",
+      "registrationDate": "2017-07-01",
+      "businessType": "Private Limited Company"
+    },
+    {
+      "gstin": "29AABCA1234K1ZT",
+      "legalName": "Accenture Solutions Private Limited",
+      "tradeName": "Accenture",
+      "state": "Karnataka",
+      "status": "Active",
+      "registrationDate": "2017-07-01",
+      "businessType": "Private Limited Company"
+    },
+    {
+      "gstin": "27AADCZ1234L1Z8",
+      "legalName": "Zoho Corporation Private Limited",
+      "tradeName": "Zoho",
+      "state": "Maharashtra",
+      "status": "Active",
+      "registrationDate": "2017-08-01",
+      "businessType": "Private Limited Company"
+    },
+    {
+      "gstin": "33AABCF1234H1ZA",
+      "legalName": "Freshworks Inc India",
+      "tradeName": "Freshworks",
+      "state": "Tamil Nadu",
+      "status": "Active",
+      "registrationDate": "2017-09-01",
+      "businessType": "Private Limited Company"
+    },
+    {
+      "gstin": "29AAACD1234M1ZC",
+      "legalName": "Delhivery Private Limited",
+      "tradeName": "Delhivery",
+      "state": "Karnataka",
+      "status": "Active",
+      "registrationDate": "2018-01-01",
+      "businessType": "Private Limited Company"
+    },
+    {
+      "gstin": "07AABCR1234N1ZB",
+      "legalName": "Ola Electric Mobility Private Limited",
+      "tradeName": "Ola Electric",
+      "state": "Delhi",
+      "status": "Active",
+      "registrationDate": "2019-04-01",
+      "businessType": "Private Limited Company"
+    },
+    {
+      "gstin": "27AABCP1234Q1Z5",
+      "legalName": "PhonePe Private Limited",
+      "tradeName": "PhonePe",
+      "state": "Maharashtra",
+      "status": "Active",
+      "registrationDate": "2019-01-01",
+      "businessType": "Private Limited Company"
+    },
+    {
+      "gstin": "29AABCS1234R1Z9",
+      "legalName": "Swiggy (Bundl Technologies) Private Limited",
+      "tradeName": "Swiggy",
+      "state": "Karnataka",
+      "status": "Active",
+      "registrationDate": "2018-06-01",
+      "businessType": "Private Limited Company"
+    },
+    {
+      "gstin": "29AABCZ1234S1Z2",
+      "legalName": "Zepto (Mobi Grocery Store) Private Limited",
+      "tradeName": "Zepto",
+      "state": "Karnataka",
+      "status": "Active",
+      "registrationDate": "2021-05-01",
+      "businessType": "Private Limited Company"
+    },
+    {
+      "gstin": "22AAAAA0000A1Z5",
+      "legalName": "Demo Company Private Limited",
+      "tradeName": "DemoCorp",
+      "state": "Chhattisgarh",
+      "status": "Active",
+      "registrationDate": "2020-01-01",
+      "businessType": "Private Limited Company"
+    },
+    {
+      "gstin": "27AABCD1234E1Z5",
+      "legalName": "TestRecruit Solutions Private Limited",
+      "tradeName": "TestRecruit",
+      "state": "Maharashtra",
+      "status": "Active",
+      "registrationDate": "2021-06-01",
+      "businessType": "Private Limited Company"
+    }
+  ]
 }

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AuthUser, UserRole } from '../types.ts';
-import { db } from '../services/db.ts';
+import { db, lookupGSTIN, validateGSTIN, GSTINLookupResult } from '../services/db.ts';
 
 interface LoginPageProps {
     onAuthSuccess: (user: AuthUser) => void;
@@ -22,7 +22,24 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
     const [fullName, setFullName] = useState('');
     const [company, setCompany] = useState('');
     const [website, setWebsite] = useState('');
+    const [gstin, setGstin] = useState('');
+    const [gstinLookup, setGstinLookup] = useState<GSTINLookupResult | null>(null);
     const [showPassword, setShowPassword] = useState(false);
+
+    const handleGstinChange = (val: string) => {
+        const upper = val.toUpperCase();
+        setGstin(upper);
+        if (upper.length === 15) {
+            const result = lookupGSTIN(upper);
+            setGstinLookup(result);
+            // Auto-fill company name from registry
+            if (result.status === 'registered' && result.tradeName && !company) {
+                setCompany(result.tradeName);
+            }
+        } else {
+            setGstinLookup(null);
+        }
+    };
 
     const handleRoleSelect = (role: UserRole) => {
         setSelectedRole(role);
@@ -38,6 +55,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
         setFullName('');
         setCompany('');
         setWebsite('');
+        setGstin('');
+        setGstinLookup(null);
         setApiError(null);
     };
 
@@ -52,12 +71,22 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
             if (isLogin) {
                 authUser = await db.login({ email, password, role: selectedRole });
             } else {
+                // Client-side GSTIN validation before trying to register
+                if (selectedRole === 'recruiter') {
+                    if (!gstin) { setApiError('GSTIN is required for recruiter registration.'); setLoading(false); return; }
+                    const lookup = lookupGSTIN(gstin);
+                    if (lookup.status === 'invalid') {
+                        setApiError('Invalid GSTIN format. Please enter a valid 15-character GSTIN (e.g. 27AAACR5055K1ZK or 22AAAAA0000A1Z5).');
+                        setLoading(false);
+                        return;
+                    }
+                }
                 authUser = await db.register({
                     fullName,
                     email,
                     password,
                     role: selectedRole,
-                    ...(selectedRole === 'recruiter' && { company, website }),
+                    ...(selectedRole === 'recruiter' && { company, website, gstin }),
                 });
             }
             localStorage.setItem('portfoliox_user', JSON.stringify(authUser));
@@ -337,6 +366,145 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company Website</label>
                                             <input id="auth-website" className="input-field" type="url" placeholder="https://company.com"
                                                 value={website} onChange={e => setWebsite(e.target.value)} />
+                                        </div>
+                                        {/* ── GSTIN Verification Field ── */}
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+                                                style={{ color: '#fbbf24' }}>
+                                                🏛️ GSTIN Number <span className="text-red-400">*</span>
+                                                <span className="bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-1.5 py-0.5 rounded text-[8px] font-black">REQUIRED</span>
+                                            </label>
+
+                                            {/* Input */}
+                                            <div className="relative">
+                                                <input
+                                                    id="auth-gstin"
+                                                    className="input-field"
+                                                    type="text"
+                                                    required
+                                                    placeholder="e.g. 27AAACR5055K1ZK"
+                                                    maxLength={15}
+                                                    value={gstin}
+                                                    onChange={e => handleGstinChange(e.target.value)}
+                                                    style={{
+                                                        letterSpacing: '0.12em',
+                                                        fontFamily: 'monospace',
+                                                        fontSize: '13px',
+                                                        borderColor:
+                                                            gstinLookup?.status === 'invalid'
+                                                                ? 'rgba(239,68,68,0.6)'
+                                                                : gstinLookup?.status === 'registered'
+                                                                    ? 'rgba(16,185,129,0.6)'
+                                                                    : gstinLookup?.status === 'format-valid'
+                                                                        ? 'rgba(251,191,36,0.6)'
+                                                                        : undefined,
+                                                    }}
+                                                />
+                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm">
+                                                    {gstinLookup?.status === 'registered' ? '✅'
+                                                        : gstinLookup?.status === 'format-valid' ? '🟡'
+                                                            : gstinLookup?.status === 'invalid' ? '❌'
+                                                                : gstin.length > 0 ? `${gstin.length}/15` : ''}
+                                                </span>
+                                            </div>
+
+                                            {/* ── Verification Result Card ── */}
+                                            {gstinLookup?.status === 'registered' && (
+                                                <div style={{
+                                                    background: 'rgba(16,185,129,0.08)',
+                                                    border: '1px solid rgba(16,185,129,0.3)',
+                                                    borderRadius: '14px',
+                                                    padding: '14px 16px',
+                                                    animation: 'fadeSlideUp 0.4s ease forwards',
+                                                }}>
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="text-base">✅</span>
+                                                        <span className="text-emerald-400 text-[10px] font-black uppercase tracking-widest">Verified — Found in GST Registry</span>
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-slate-500 text-[10px] font-bold w-24 shrink-0">Legal Name</span>
+                                                            <span className="text-white text-xs font-black">{gstinLookup.legalName}</span>
+                                                        </div>
+                                                        {gstinLookup.tradeName && gstinLookup.tradeName !== gstinLookup.legalName && (
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-slate-500 text-[10px] font-bold w-24 shrink-0">Trade Name</span>
+                                                                <span className="text-slate-300 text-xs font-bold">{gstinLookup.tradeName}</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-slate-500 text-[10px] font-bold w-24 shrink-0">State</span>
+                                                            <span className="text-slate-300 text-xs font-bold">{gstinLookup.state}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-slate-500 text-[10px] font-bold w-24 shrink-0">Type</span>
+                                                            <span className="text-slate-300 text-xs font-bold">{gstinLookup.businessType}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-slate-500 text-[10px] font-bold w-24 shrink-0">GST Status</span>
+                                                            <span className="text-emerald-400 text-xs font-black">{gstinLookup.gstStatus}</span>
+                                                        </div>
+                                                        {gstinLookup.registrationDate && (
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-slate-500 text-[10px] font-bold w-24 shrink-0">Registered</span>
+                                                                <span className="text-slate-400 text-xs font-bold">
+                                                                    {new Date(gstinLookup.registrationDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {gstinLookup?.status === 'format-valid' && (
+                                                <div style={{
+                                                    background: 'rgba(251,191,36,0.06)',
+                                                    border: '1px solid rgba(251,191,36,0.3)',
+                                                    borderRadius: '12px',
+                                                    padding: '10px 14px',
+                                                    display: 'flex',
+                                                    alignItems: 'flex-start',
+                                                    gap: '8px',
+                                                }}>
+                                                    <span>🟡</span>
+                                                    <div>
+                                                        <p className="text-yellow-400 text-[10px] font-black">Format Valid — Not in Pre-Verified Registry</p>
+                                                        <p className="text-slate-500 text-[9px] mt-0.5">GSTIN format is correct but not found in our verified business registry. You can still register — your GSTIN will be noted for manual review.</p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {gstinLookup?.status === 'invalid' && (
+                                                <p className="text-red-400 text-[10px] font-bold">❌ Invalid GSTIN format. Must match: 2-digit state + 5 letters + 4 digits + letter + digit + Z + checksum (15 chars)</p>
+                                            )}
+
+                                            <p className="text-slate-700 text-[9px]">Format: 2-digit state code · 10-char PAN · entity no. · Z · checksum — 15 chars total</p>
+
+                                            {/* Quick Reference */}
+                                            <details className="group">
+                                                <summary className="text-[9px] font-black text-slate-600 uppercase tracking-widest cursor-pointer hover:text-slate-400 transition-colors select-none">
+                                                    📋 Sample GSTINs from registry (click to expand)
+                                                </summary>
+                                                <div className="mt-2 space-y-1.5 pl-2 border-l border-white/5">
+                                                    {[
+                                                        { gstin: '27AAACR5055K1ZK', name: 'Reliance Industries' },
+                                                        { gstin: '29AABCT1332L1ZQ', name: 'TCS' },
+                                                        { gstin: '29AABCW0340E1ZN', name: 'Wipro' },
+                                                        { gstin: '22AAAAA0000A1Z5', name: 'Demo Company (test)' },
+                                                        { gstin: '27AABCD1234E1Z5', name: 'TestRecruit (test)' },
+                                                    ].map(s => (
+                                                        <button
+                                                            key={s.gstin}
+                                                            type="button"
+                                                            onClick={() => handleGstinChange(s.gstin)}
+                                                            className="flex items-center gap-3 w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-all group/item"
+                                                        >
+                                                            <span className="font-mono text-[10px] text-blue-400 group-hover/item:text-blue-300">{s.gstin}</span>
+                                                            <span className="text-[9px] text-slate-600">— {s.name}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </details>
                                         </div>
                                     </>
                                 )}

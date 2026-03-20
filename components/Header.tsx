@@ -33,12 +33,21 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, currentUser, o
         {!isRecruiter && (
           <>
             {currentUser && (
-              <button
-                onClick={() => onNavigate(AppView.QUIZ)}
-                className={`text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest transition-colors ${currentView === AppView.QUIZ ? 'text-purple-400' : 'text-slate-400 hover:text-white'}`}
-              >
-                Quiz Arena
-              </button>
+              <>
+                <button
+                  onClick={() => onNavigate(AppView.QUIZ)}
+                  className={`text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest transition-colors ${currentView === AppView.QUIZ ? 'text-purple-400' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Quiz Arena
+                </button>
+                <button
+                  onClick={() => onNavigate(AppView.MESSAGES)}
+                  className={`flex items-center gap-1 text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest transition-colors ${currentView === AppView.MESSAGES ? 'text-blue-400' : 'text-slate-400 hover:text-white'}`}
+                >
+                  <span>💬</span>
+                  <span className="hidden sm:inline">Messages</span>
+                </button>
+              </>
             )}
           </>
         )}

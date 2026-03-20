@@ -1,6 +1,9 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { UserPortfolio, AuthUser, DomainFilter } from '../types.ts';
+import RecruiterQuizPanel from './RecruiterQuizPanel.tsx';
+import MessagingPanel from './MessagingPanel.tsx';
+import { db } from '../services/db.ts';
 
 interface RecruiterDashboardProps {
     portfolios: UserPortfolio[];
@@ -30,7 +33,7 @@ interface ShortlistedCandidate {
     addedAt: string;
 }
 
-type DashTab = 'overview' | 'search' | 'jobs' | 'shortlist' | 'analytics';
+type DashTab = 'overview' | 'search' | 'jobs' | 'shortlist' | 'quiz' | 'messages' | 'analytics';
 
 const DOMAINS: DomainFilter[] = ['All', 'Frontend', 'Backend', 'Full Stack', 'Security', 'AI/ML'];
 
@@ -179,6 +182,21 @@ const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ portfolios, cur
     const [aiLoading, setAiLoading] = useState(false);
     const [showNewJob, setShowNewJob] = useState(false);
     const [newJob, setNewJob] = useState<Partial<JobPosting>>({ type: 'Full-Time', domain: 'Frontend', status: 'active', applicants: 0 });
+    const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+
+    // Load unread message count
+    useEffect(() => {
+        const loadUnread = async () => {
+            const convs = await db.getConversationsByRecruiter(currentUser.id);
+            const total = convs.reduce((sum, c) =>
+                sum + c.messages.filter(m => m.senderId !== currentUser.id && !m.read).length, 0
+            );
+            setUnreadMsgCount(total);
+        };
+        loadUnread();
+        const interval = setInterval(loadUnread, 15000); // refresh every 15s
+        return () => clearInterval(interval);
+    }, [currentUser.id]);
 
     // Search & filter portfolios
     const filtered = useMemo(() => {
@@ -262,6 +280,8 @@ const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ portfolios, cur
         { key: 'search', icon: '🔍', label: 'Find Talent' },
         { key: 'jobs', icon: '💼', label: 'Job Postings' },
         { key: 'shortlist', icon: '⭐', label: `Shortlist (${shortlisted.length})` },
+        { key: 'quiz', icon: '🎯', label: 'Quiz & Screen' },
+        { key: 'messages', icon: '💬', label: unreadMsgCount > 0 ? `Messages (${unreadMsgCount})` : 'Messages' },
         { key: 'analytics', icon: '📈', label: 'AI Match' },
     ];
 
@@ -630,6 +650,27 @@ const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ portfolios, cur
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
+            {/* ══════════════════════════ TAB: QUIZ ══════════════════════════ */}
+            {activeTab === 'quiz' && (
+                <div className="animate-in fade-in duration-500">
+                    <RecruiterQuizPanel
+                        currentUser={currentUser}
+                        shortlistedPortfolios={shortlistedPortfolios
+                            .map(sl => sl.portfolio)
+                            .filter((p): p is UserPortfolio => !!p)}
+                    />
+                </div>
+            )}
+
+            {/* ══════════════════════════ TAB: MESSAGES ══════════════════════════ */}
+            {activeTab === 'messages' && (
+                <div className="animate-in fade-in duration-500">
+                    <MessagingPanel
+                        currentUser={currentUser}
+                        allPortfolios={portfolios}
+                    />
                 </div>
             )}
         </div>
